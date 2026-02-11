@@ -1,0 +1,22 @@
+# Secrets / credentials
+secrets/
+**/credentials.json
+**/*.key
+**/*.pem
+.env
+.env.*
+
+# Temp / downloads
+tmp/
+
+# OS / editor
+.DS_Store
+.vscode/
+
+# Node / python
+node_modules/
+__pycache__/
+*.pyc
+
+# Logs
+*.log
