@@ -9,6 +9,9 @@ secrets/
 # Temp / downloads
 tmp/
 
+# Local workspace symlinks
+projects/
+
 # OS / editor
 .DS_Store
 .vscode/

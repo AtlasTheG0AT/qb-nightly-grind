@@ -1,23 +1,6 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
 local busy = false
-local last = {
-    pickup = 0,
-    process = 0,
-    sell = 0,
-}
-
-local function now()
-    return GetGameTimer()
-end
-
-local function cooldownOk(key, seconds)
-    return (now() - (last[key] or 0)) >= (seconds * 1000)
-end
-
-local function setLast(key)
-    last[key] = now()
-end
 
 local function notify(msg, typ)
     TriggerEvent('QBCore:Notify', msg, typ or 'primary')
@@ -40,71 +23,77 @@ end
 
 local function doProgress(label, timeMs)
     busy = true
-    local ok = exports['qb-core']:Progressbar('qb_scraproute', label, timeMs, false, true, {
+
+    local finished = false
+    local cancelled = false
+
+    exports['qb-core']:Progressbar('qb_scraproute', label, timeMs, false, true, {
         disableMovement = true,
         disableCarMovement = true,
         disableMouse = false,
         disableCombat = true,
     }, {}, {}, {}, function()
+        finished = true
         busy = false
     end, function()
+        cancelled = true
         busy = false
     end)
-    return ok
+
+    while busy do
+        Wait(50)
+    end
+
+    return finished and (not cancelled)
 end
 
 RegisterNetEvent('qb-scraproute:client:notify', function(msg, typ)
     notify(msg, typ)
 end)
 
-RegisterNetEvent('qb-scraproute:client:pickup', function()
-    if busy then return end
-    if not cooldownOk('pickup', Config.Cooldowns.PickupSeconds) then
-        return notify('Cooldown…', 'error')
+-- Server-approved flow:
+-- 1) client requests action (spotId)
+-- 2) server validates distance + rate limit + busy lock
+-- 3) server tells client to run progress/emote
+-- 4) client reports completion; server awards items/money
+RegisterNetEvent('qb-scraproute:client:beginAction', function(action, token, spotId)
+    if busy then
+        -- Shouldn't happen because server enforces busy lock, but don't stack progressbars.
+        TriggerServerEvent('qb-scraproute:server:completeAction', action, token, spotId, true)
+        return
     end
 
-    setLast('pickup')
-    playEmote(Config.Emotes.Pickup)
-    doProgress('Picking up scrap…', Config.Emotes.Pickup.timeMs or 8000)
+    local em = nil
+    if action == 'pickup' then em = Config.Emotes.Pickup end
+    if action == 'process' then em = Config.Emotes.Process end
+    if action == 'sell' then em = Config.Emotes.Sell end
+
+    local label = 'Working…'
+    if action == 'pickup' then label = 'Picking up scrap…' end
+    if action == 'process' then label = 'Processing scrap…' end
+    if action == 'sell' then label = 'Selling bundles…' end
+
+    local timeMs = (em and em.timeMs) or 8000
+
+    playEmote(em)
+    local ok = doProgress(label, timeMs)
     stopEmote()
 
-    TriggerServerEvent('qb-scraproute:server:pickup')
+    TriggerServerEvent('qb-scraproute:server:completeAction', action, token, spotId, not ok)
 end)
 
-RegisterNetEvent('qb-scraproute:client:process', function()
+local function request(action, spotId)
     if busy then return end
-    if not cooldownOk('process', Config.Cooldowns.ProcessSeconds) then
-        return notify('Cooldown…', 'error')
-    end
-
-    setLast('process')
-    playEmote(Config.Emotes.Process)
-    doProgress('Processing scrap…', Config.Emotes.Process.timeMs or 10000)
-    stopEmote()
-
-    TriggerServerEvent('qb-scraproute:server:process')
-end)
-
-RegisterNetEvent('qb-scraproute:client:sell', function()
-    if busy then return end
-    if not cooldownOk('sell', Config.Cooldowns.SellSeconds) then
-        return notify('Cooldown…', 'error')
-    end
-
-    setLast('sell')
-    playEmote(Config.Emotes.Sell)
-    doProgress('Selling bundles…', Config.Emotes.Sell.timeMs or 6000)
-    stopEmote()
-
-    TriggerServerEvent('qb-scraproute:server:sell')
-end)
+    TriggerServerEvent('qb-scraproute:server:requestAction', action, spotId)
+end
 
 CreateThread(function()
     Wait(1500)
-    if not Config.Target.UseQBTarget then return end
+
+    if not Config.Target or not Config.Target.UseQBTarget then return end
 
     if not exports['qb-target'] then
-        print('[qb-scraproute] qb-target not found; add fallback later')
+        print('[qb-scraproute] qb-target not found. Set Config.Target.UseQBTarget=false and wire your own entrypoints.')
         return
     end
 
@@ -127,7 +116,7 @@ CreateThread(function()
                         icon = 'fas fa-recycle',
                         label = 'Pick up scrap',
                         action = function()
-                            TriggerEvent('qb-scraproute:client:pickup')
+                            request('pickup', i)
                         end,
                     }
                 },
@@ -154,7 +143,7 @@ CreateThread(function()
                     icon = 'fas fa-industry',
                     label = 'Process scrap',
                     action = function()
-                        TriggerEvent('qb-scraproute:client:process')
+                        request('process', 0)
                     end,
                 }
             },
@@ -180,7 +169,7 @@ CreateThread(function()
                     icon = 'fas fa-dollar-sign',
                     label = 'Sell bundles',
                     action = function()
-                        TriggerEvent('qb-scraproute:client:sell')
+                        request('sell', 0)
                     end,
                 }
             },
