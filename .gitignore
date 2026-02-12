@@ -12,6 +12,9 @@ tmp/
 # Local workspace symlinks
 projects/
 
+# Local journaling
+MyJournal/
+
 # OS / editor
 .DS_Store
 .vscode/
