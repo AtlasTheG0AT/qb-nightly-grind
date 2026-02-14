@@ -2,15 +2,16 @@
 
 *Learn about the person you're helping. Update this as you go.*
 
-- **Name:** 
-- **What to call them:** 
+- **Name:** Nitro
+- **What to call them:** Nitro
 - **Pronouns:** *(optional)*
-- **Timezone:** 
-- **Notes:** 
+- **Timezone:** America/Los_Angeles (PT)
+- **Notes:** Wants me to be proactive by default; prioritize shipping productive QBCore/FiveM money-making content players can do.
 
 ## Context
 
-*(What do they care about? What projects are they working on? What annoys them? What makes them laugh? Build this over time.)*
+- Running a FiveM QBCore city; wants **2 new resources/day + 1 major upgrade/day** in a consistent “Nitro Golden Rules” style, then he’ll vet before adding.
+- Uses WhatsApp as the main control channel (target by phone number, not contact name).
 
 ---
 
