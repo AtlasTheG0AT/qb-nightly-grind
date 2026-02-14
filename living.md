@@ -5,6 +5,7 @@
 - 2026-02-12: Added new active grind resource `qb-warehousepack` (pickup boxes -> pack crates -> deliver for cash) with server validation, per-player busy lock, rate limiting, and configurable coords/emotes.
 - 2026-02-13: Added new active grind resource `qb-couriergrind` (start route -> pickup package -> deliver to multiple drop-offs for cash) with server-owned run state, distance validation, per-player busy lock, rate limiting, and config hotspots for coords/headings + RPEmotes-Reborn per step.
 - 2026-02-14: Added new active grind resource `qb-foragerun` (forage -> clean -> sell) with server-validated actions, per-player busy lock, rate limiting, and configurable coords/headings + RPEmotes-Reborn per step.
+- 2026-02-14: Added new active grind resource `qb-meterfix` (start shift -> fix assigned parking meters -> cashout bonus) with server-authoritative run state, distance checks, rate limiting, per-player busy lock, and configurable coords/emotes per step.
 
 ## Decisions made
 - Kept the existing `qb-scraproute` resource and improved it instead of creating a new one, since it already fits the "active money-making loop" requirement and just needed stronger server authority.
