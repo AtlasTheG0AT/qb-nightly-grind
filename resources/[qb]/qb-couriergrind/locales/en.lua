@@ -12,12 +12,15 @@ local Translations = {
         picked_up = "Package picked up. Deliver to the next address.",
         delivered = "Delivered. Next stop sent.",
         finished = "Route complete. Get paid.",
+        tier_up = "Courier rep tier unlocked: %{tier}",
     },
     info = {
         interact_pickup = "Pick up package",
         interact_deliver = "Deliver package",
         interact_start = "Start courier route",
         waypoint_set = "Waypoint set.",
+        rep_gain = "Courier rep: %{rep} (%{tier})",
+        police_alerted = "That drop was noisy — police might be alerted.",
     }
 }
 

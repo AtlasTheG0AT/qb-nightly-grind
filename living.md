@@ -1,6 +1,7 @@
 # Living doc
 
 ## Recent changes
+- 2026-02-15: Upgraded `qb-couriergrind` with server-owned **courier rep tiers** (metadata-based progression with per-tier payout multipliers) and an optional, configurable **police alert chance** hook (dispatch-agnostic).
 - 2026-02-11: Hardened `qb-scraproute` to follow Nitro Golden Rules more strictly: server-approved start/completion flow with tokens, server-side rate limiting, and distance checks.
 - 2026-02-12: Added new active grind resource `qb-warehousepack` (pickup boxes -> pack crates -> deliver for cash) with server validation, per-player busy lock, rate limiting, and configurable coords/emotes.
 - 2026-02-13: Added new active grind resource `qb-couriergrind` (start route -> pickup package -> deliver to multiple drop-offs for cash) with server-owned run state, distance validation, per-player busy lock, rate limiting, and config hotspots for coords/headings + RPEmotes-Reborn per step.

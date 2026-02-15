@@ -13,8 +13,39 @@ Config.EventRateLimitMs = 750 -- minimum ms between sensitive client->server eve
 -- Inventory + payout
 Config.PackageItem = 'delivery_package'
 Config.PackageItemAmount = 1
-Config.PayoutPerDelivery = { min = 120, max = 220 } -- cash per successful drop
+Config.PayoutPerDelivery = { min = 120, max = 220 } -- cash per successful drop (before multipliers)
 Config.PayoutAccount = 'cash' -- 'cash' | 'bank'
+
+-- Progression: courier rep tiers (server-owned, stored in player metadata)
+-- Notes:
+-- - Rep is awarded per successful delivery.
+-- - Tier payout multipliers apply per-delivery.
+-- - Optional: reduce / increase police alert chance per tier via `alertChanceMult`.
+Config.Rep = {
+    Enabled = true,
+    MetadataKey = 'courierrep',
+    RepPerDelivery = 1,
+    Tiers = {
+        { name = 'Rookie',  minRep = 0,   payoutMult = 1.00, alertChanceMult = 1.00 },
+        { name = 'Runner',  minRep = 25,  payoutMult = 1.05, alertChanceMult = 0.95 },
+        { name = 'Pro',     minRep = 75,  payoutMult = 1.12, alertChanceMult = 0.90 },
+        { name = 'Legend',  minRep = 150, payoutMult = 1.20, alertChanceMult = 0.85 },
+    }
+}
+
+-- Optional risk: police alert chance on deliveries (server-side)
+-- This is intentionally dispatch-script-agnostic. Configure a server event in your police/dispatch.
+-- The resource will call: TriggerEvent(Config.PoliceAlert.ServerEvent, payload)
+Config.PoliceAlert = {
+    Enabled = false,
+    ChancePerDelivery = 0.12, -- 0.00 - 1.00
+    CooldownSeconds = 90, -- per-player
+    ServerEvent = 'qb-couriergrind:server:PoliceAlert', -- change to your dispatch, e.g. 'ps-dispatch:server:notify'
+    Payload = {
+        code = '10-66',
+        title = 'Suspicious courier activity',
+    },
+}
 
 -- Route settings
 Config.DeliveriesPerRun = { min = 4, max = 7 }

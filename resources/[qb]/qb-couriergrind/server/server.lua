@@ -4,6 +4,7 @@ local Busy = {}
 local Cooldowns = {}
 local Runs = {}
 local RateLimit = {}
+local PoliceCooldown = {}
 
 local function now()
     return os.time()
@@ -44,6 +45,51 @@ end
 
 local function getPlayer(src)
     return QBCore.Functions.GetPlayer(src)
+end
+
+local function getRep(ply)
+    if not (Config.Rep and Config.Rep.Enabled) then return 0 end
+    local key = Config.Rep.MetadataKey or 'courierrep'
+    local md = (ply.PlayerData and ply.PlayerData.metadata) or {}
+    local rep = tonumber(md[key] or 0) or 0
+    return rep
+end
+
+local function setRep(ply, rep)
+    if not (Config.Rep and Config.Rep.Enabled) then return end
+    local key = Config.Rep.MetadataKey or 'courierrep'
+    rep = math.max(0, math.floor(rep))
+    -- Prefer SetMetaData (persists)
+    if ply.Functions and ply.Functions.SetMetaData then
+        ply.Functions.SetMetaData(key, rep)
+    else
+        ply.PlayerData.metadata[key] = rep
+    end
+end
+
+local function addRep(ply, delta)
+    if not (Config.Rep and Config.Rep.Enabled) then return 0 end
+    local rep = getRep(ply)
+    rep = rep + (delta or 0)
+    setRep(ply, rep)
+    return rep
+end
+
+local function getTierForRep(rep)
+    local tier = { name = 'Rookie', minRep = 0, payoutMult = 1.0, alertChanceMult = 1.0 }
+    if not (Config.Rep and Config.Rep.Tiers and #Config.Rep.Tiers > 0) then
+        return tier
+    end
+
+    for _, t in ipairs(Config.Rep.Tiers) do
+        if rep >= (t.minRep or 0) and (t.minRep or 0) >= (tier.minRep or 0) then
+            tier = t
+        end
+    end
+
+    tier.payoutMult = tonumber(tier.payoutMult or 1.0) or 1.0
+    tier.alertChanceMult = tonumber(tier.alertChanceMult or 1.0) or 1.0
+    return tier
 end
 
 local function getPlayerCoords(src)
@@ -136,6 +182,13 @@ AddEventHandler('playerDropped', function()
     clearState(src)
     Cooldowns[src] = nil
     RateLimit[src] = nil
+    PoliceCooldown[src] = nil
+end)
+
+-- Default police alert handler (no-op by default).
+-- Change `Config.PoliceAlert.ServerEvent` to match your dispatch/police resource.
+AddEventHandler('qb-couriergrind:server:PoliceAlert', function(payload)
+    dbg('PoliceAlert payload:', json.encode(payload or {}))
 end)
 
 RegisterNetEvent('qb-couriergrind:server:StartRun', function()
@@ -197,6 +250,9 @@ RegisterNetEvent('qb-couriergrind:server:StartRun', function()
         end
     end
 
+    local rep = getRep(ply)
+    local tier = getTierForRep(rep)
+
     Runs[src] = {
         runId = runId,
         stage = 'pickup',
@@ -207,6 +263,8 @@ RegisterNetEvent('qb-couriergrind:server:StartRun', function()
         depositTaken = depositTaken,
         vehicleNetId = vehicleRes.netId,
         paid = 0,
+        repAtStart = rep,
+        tierAtStart = tier.name,
     }
 
     TriggerClientEvent('qb-couriergrind:client:RunStarted', src, {
@@ -215,6 +273,8 @@ RegisterNetEvent('qb-couriergrind:server:StartRun', function()
         delivery = route[1],
         hasVehicle = vehicleRes.hasVehicle,
         vehicleNetId = vehicleRes.netId,
+        rep = rep,
+        tier = tier.name,
     })
 end)
 
@@ -295,10 +355,49 @@ RegisterNetEvent('qb-couriergrind:server:DeliverPackage', function(runId)
         TriggerClientEvent('inventory:client:ItemBox', src, itemData, 'remove')
     end
 
-    -- payout (server-side)
-    local pay = math.random(Config.PayoutPerDelivery.min or 120, Config.PayoutPerDelivery.max or 220)
+    -- payout + progression (server-side)
+    local repBefore = getRep(ply)
+    local tier = getTierForRep(repBefore)
+
+    local basePay = math.random(Config.PayoutPerDelivery.min or 120, Config.PayoutPerDelivery.max or 220)
+    local pay = math.floor((basePay * (tier.payoutMult or 1.0)) + 0.5)
+    pay = math.max(1, pay)
+
     ply.Functions.AddMoney(Config.PayoutAccount or 'cash', pay, 'courier-delivery')
     run.paid = (run.paid or 0) + pay
+
+    -- Rep gain after successful delivery
+    local repAfter = addRep(ply, Config.Rep and Config.Rep.RepPerDelivery or 0)
+    if Config.Rep and Config.Rep.Enabled then
+        local tierAfter = getTierForRep(repAfter)
+        if tierAfter.name ~= tier.name then
+            notify(src, Lang:t('success.tier_up', { tier = tierAfter.name }), 'success')
+        end
+        notify(src, Lang:t('info.rep_gain', { rep = repAfter, tier = tierAfter.name }), 'primary')
+    end
+
+    -- Optional: police alert chance (server-side)
+    if Config.PoliceAlert and Config.PoliceAlert.Enabled then
+        local tNow = now()
+        local last = PoliceCooldown[src] or 0
+        if (tNow - last) >= (Config.PoliceAlert.CooldownSeconds or 90) then
+            local chance = (Config.PoliceAlert.ChancePerDelivery or 0.0) * (tier.alertChanceMult or 1.0)
+            if chance > 0.0 and math.random() < chance then
+                PoliceCooldown[src] = tNow
+
+                local payload = {
+                    src = src,
+                    coords = target.coords,
+                    code = (Config.PoliceAlert.Payload and Config.PoliceAlert.Payload.code) or '10-66',
+                    title = (Config.PoliceAlert.Payload and Config.PoliceAlert.Payload.title) or 'Suspicious courier activity',
+                    tier = tier.name,
+                }
+
+                TriggerEvent(Config.PoliceAlert.ServerEvent or 'qb-couriergrind:server:PoliceAlert', payload)
+                notify(src, Lang:t('info.police_alerted'), 'error')
+            end
+        end
+    end
 
     run.step = run.step + 1
 

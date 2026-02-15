@@ -74,9 +74,31 @@ Config.Emotes = {
 ```
 
 ### Economy
-- `Config.PayoutPerDelivery`
+- `Config.PayoutPerDelivery` (base pay per delivery)
 - `Config.PayoutAccount`
 - `Config.VehicleDeposit`
+
+### Progression: courier rep tiers
+Enabled by default:
+- `Config.Rep.Enabled`
+- `Config.Rep.MetadataKey` (stored in player metadata; default `courierrep`)
+- `Config.Rep.RepPerDelivery`
+- `Config.Rep.Tiers` (minRep → payout multiplier)
+
+Rep is **awarded server-side** on each successful delivery and used to apply a **per-delivery payout multiplier**.
+
+### Optional risk: police alert chance
+Disabled by default:
+- `Config.PoliceAlert.Enabled`
+- `Config.PoliceAlert.ChancePerDelivery`
+- `Config.PoliceAlert.CooldownSeconds`
+- `Config.PoliceAlert.ServerEvent`
+
+This resource is dispatch-agnostic. When an alert triggers, it calls:
+```lua
+TriggerEvent(Config.PoliceAlert.ServerEvent, payload)
+```
+Where `payload` includes: `coords`, `code`, `title`, `src`, and current rep `tier`.
 
 ## Notes / Security
 - The server validates pickup/delivery **distance** using server-side player coords.

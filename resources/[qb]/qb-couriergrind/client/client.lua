@@ -187,6 +187,9 @@ RegisterNetEvent('qb-couriergrind:client:RunStarted', function(payload)
     }
 
     Notify(Lang:t('success.started'), 'success')
+    if payload.rep ~= nil and payload.tier ~= nil then
+        Notify(Lang:t('info.rep_gain', { rep = payload.rep, tier = payload.tier }), 'primary')
+    end
     SetWaypoint(payload.pickup.coords)
     Notify(Lang:t('info.waypoint_set'), 'primary')
 end)
